@@ -130,9 +130,14 @@ class BillingKit(
 
     private var currentPurchases: List<OwnedPurchase> = emptyList()
 
+    /** Token of the subscription a plan change in flight is replacing; it is retired when the new purchase lands. */
+    @Volatile
+    private var replacedToken: String? = null
+
     private fun launch(activity: Activity, productId: String, basePlanId: String?, oldToken: String?, mode: PlanChange?): BillingStatus {
         val offer = offerFor(productId, basePlanId) ?: return BillingStatus.ITEM_UNAVAILABLE.also(::reportError)
         val status = gateway.launchPurchase(activity, productId, offer.offerToken, oldToken, mode)
+        if (status == BillingStatus.OK && oldToken != null) replacedToken = oldToken
         if (status != BillingStatus.OK) reportError(status)
         return status
     }
@@ -171,7 +176,19 @@ class BillingKit(
 
     private suspend fun onPurchaseUpdate(update: PurchaseUpdate) {
         when (update.status) {
-            BillingStatus.OK -> applyPurchases(update.purchases, replaceAll = false)
+            BillingStatus.OK -> {
+                val replaced = replacedToken
+                if (replaced != null && update.purchases.isNotEmpty()) {
+                    // A plan change is a new purchase: retire the one it replaces, then let queryPurchasesAsync
+                    // (the source of truth, which also knows about deferred replacements) settle the final state.
+                    replacedToken = null
+                    currentPurchases = currentPurchases.filter { it.purchaseToken != replaced }
+                    applyPurchases(update.purchases, replaceAll = false)
+                    refresh()
+                } else {
+                    applyPurchases(update.purchases, replaceAll = false)
+                }
+            }
             BillingStatus.ITEM_ALREADY_OWNED -> refresh() // the user owns it on another device: restore
             BillingStatus.USER_CANCELED -> Unit
             else -> reportError(update.status)
