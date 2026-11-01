@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an API or behavior for play-billing-kit.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or buggy to do today with Play Billing (or with this kit)?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: How would you like to call it? A Kotlin snippet helps a lot.
+      render: kotlin
+  - type: input
+    id: docs
+    attributes:
+      label: Official docs
+      description: Link to the developer.android.com page for the Play feature involved, if any.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to open a pull request for this.
