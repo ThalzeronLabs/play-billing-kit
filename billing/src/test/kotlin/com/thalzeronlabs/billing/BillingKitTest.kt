@@ -98,6 +98,36 @@ class BillingKitTest {
     }
 
     @Test
+    fun `after an upgrade the replaced plan stops granting access`() = runTest {
+        val gateway = FakeGateway(purchases = listOf(owned("pro_monthly", token = "old")))
+        val k = kit(gateway)
+        k.buy(activity, "elite_monthly")
+
+        // Play replaced the old subscription: only the new one is reported from now on.
+        gateway.purchases = listOf(owned("elite_monthly", token = "new"))
+        gateway.updates.emit(PurchaseUpdate(BillingStatus.OK, listOf(owned("elite_monthly", token = "new", acknowledged = false))))
+        settle()
+
+        assertEquals(setOf("elite_monthly"), k.state.value.activeProductIds)
+        assertEquals(listOf("new"), gateway.acknowledged)
+    }
+
+    @Test
+    fun `a deferred downgrade keeps the current plan until it renews`() = runTest {
+        val gateway = FakeGateway(purchases = listOf(owned("elite_monthly", token = "old")))
+        val k = kit(gateway)
+        k.changePlan(activity, "pro_yearly")
+
+        // With DEFERRED, queryPurchasesAsync returns the new token still tied to the old product until renewal.
+        gateway.purchases = listOf(owned("elite_monthly", token = "new"))
+        gateway.updates.emit(PurchaseUpdate(BillingStatus.OK, listOf(owned("pro_yearly", token = "new", acknowledged = false))))
+        settle()
+
+        assertEquals(setOf("elite_monthly"), k.state.value.activeProductIds)
+        assertEquals(listOf("new"), gateway.acknowledged)
+    }
+
+    @Test
     fun `an unknown product is not launched`() = runTest {
         val gateway = FakeGateway()
         val k = kit(gateway)

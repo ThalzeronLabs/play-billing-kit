@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Google Play Billing documentation
+    url: https://developer.android.com/google/play/billing/integrate
+    about: How Play Billing itself works (questions about Play, not this kit).
+  - name: API reference
+    url: https://thalzeronlabs.github.io/play-billing-kit/
+    about: Dokka reference for every public class of the kit.

@@ -1,0 +1,61 @@
+name: API docs
+
+# Publishes the Dokka reference to GitHub Pages.
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Until then the docs are still built (and kept as an artifact); only the deploy step is skipped, with a warning.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate the Dokka site
+        run: ./gradlew :billing:dokkaGeneratePublicationHtml
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: billing/build/dokka/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check that GitHub Pages is enabled
+        id: pages
+        uses: actions/configure-pages@v5
+        continue-on-error: true
+
+      - name: Deploy
+        id: deployment
+        if: steps.pages.outcome == 'success'
+        uses: actions/deploy-pages@v4
+
+      - name: Pages not enabled yet
+        if: steps.pages.outcome != 'success'
+        run: echo "::warning::GitHub Pages is not enabled. Set Settings → Pages → Source to 'GitHub Actions' and re-run this workflow."

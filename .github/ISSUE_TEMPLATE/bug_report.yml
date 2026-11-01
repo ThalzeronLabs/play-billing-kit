@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in BillingKit behaves differently from what Google Play documents.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **never paste purchase tokens, order ids, keys or account emails** — redact them.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence of calls (or a failing test against `FakeGateway`) that shows the problem.
+      placeholder: |
+        1. billing.start()
+        2. billing.buy(activity, "pro_yearly") while "pro_monthly" is active
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Official docs
+      description: Link to the developer.android.com page that describes the expected behavior, if you have one.
+  - type: input
+    id: version
+    attributes:
+      label: play-billing-kit version
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Device / Android version / Play Store version
+      placeholder: Pixel 8, Android 16, Play Store 45.x
+  - type: textarea
+    id: logs
+    attributes:
+      label: BillingState and logs
+      description: The `BillingState` you got (`lastError`, `connection`) and relevant logcat lines.
+      render: text
