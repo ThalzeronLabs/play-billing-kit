@@ -1,0 +1,82 @@
+name: Release
+
+# Creates a GitHub release (and its tag) from the matching CHANGELOG.md section, with the AAR attached.
+# Run it from the Actions tab with the tag to create, or push a vX.Y.Z tag.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, e.g. v0.1.0 (created on the selected branch if it does not exist)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Check the tag matches VERSION_NAME
+        run: |
+          expected="v$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2)"
+          if [ "$TAG" != "$expected" ]; then
+            echo "::error::Tag $TAG does not match VERSION_NAME ($expected) in gradle.properties"
+            exit 1
+          fi
+
+      - name: Unit tests
+        run: ./gradlew :billing:testDebugUnitTest
+
+      - name: Build the AAR
+        run: |
+          ./gradlew :billing:assembleRelease
+          cp billing/build/outputs/aar/billing-release.aar "play-billing-kit-${TAG}.aar"
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${TAG#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found && /^\[[^]]+\]: / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::No section for $version in CHANGELOG.md"
+            exit 1
+          fi
+          {
+            echo
+            echo "### Install"
+            echo
+            echo '```kotlin'
+            echo "implementation(\"com.github.ThalzeronLabs:play-billing-kit:${TAG}\")"
+            echo '```'
+            echo
+            echo 'With `maven("https://jitpack.io")` in your repositories. See the README for the full quick start.'
+          } >> notes.md
+          cat notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" "play-billing-kit-${TAG}.aar" \
+            --title "$TAG" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA"

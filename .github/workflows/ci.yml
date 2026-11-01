@@ -20,7 +20,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew :billing:testDebugUnitTest
+        run: ./gradlew :billing:testDebugUnitTest :sample:testDebugUnitTest
 
-      - name: Build the AAR
-        run: ./gradlew :billing:assembleRelease
+      - name: Build the AAR and the Maven publication
+        run: ./gradlew :billing:assembleRelease :billing:publishToMavenLocal
+
+      - name: Build the sample app
+        run: ./gradlew :sample:assembleDebug
+
+      - name: Build the API docs
+        run: ./gradlew :billing:dokkaGeneratePublicationHtml
