@@ -75,7 +75,18 @@ data class OneTimeOffer(
     /** The price before the discount, when this offer is a discount. */
     val fullPriceMicros: Long? = null,
     val tags: List<String> = emptyList(),
-)
+) {
+    /**
+     * How much cheaper this offer is than [fullPriceMicros], in whole percent rounded down
+     * (e.g. 25 for R$ 20 -> R$ 15), or null when it is not a discount.
+     */
+    val discountPercent: Int?
+        get() {
+            val fullPrice = fullPriceMicros ?: return null
+            if (fullPrice <= 0L || fullPrice <= priceMicros) return null
+            return (((fullPrice - priceMicros) * 100L) / fullPrice).toInt()
+        }
+}
 
 /** A purchase Play reports for this user. */
 data class OwnedPurchase(
