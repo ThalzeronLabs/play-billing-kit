@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+- Plan changes use `SubscriptionProductReplacementParams`, the per-product replacement params Google documents as
+  preferred since Billing Library 8.1, instead of the deprecated `SubscriptionUpdateParams.setSubscriptionReplacementMode`
+  ([docs](https://developer.android.com/google/play/billing/subscriptions#use_subscriptionproductreplacementparams_for_replacement_preferred)).
+  `PlanChange` and `BillingGateway` are unchanged. The two APIs use different constant values for `CHARGE_FULL_PRICE`
+  and `DEFERRED`, so every `PlanChange` is covered by a test. `PlayBillingGateway.launchPurchase` now returns
+  `DEVELOPER_ERROR` for an old purchase token it never reported, since the replaced product is then unknown.
+
 ## [0.2.1] - 2026-11-02
 
 ### Fixed

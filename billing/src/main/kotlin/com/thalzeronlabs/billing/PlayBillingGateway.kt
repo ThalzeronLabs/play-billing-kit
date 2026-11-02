@@ -8,7 +8,7 @@ import com.android.billingclient.api.BillingClient.BillingResponseCode
 import com.android.billingclient.api.BillingClient.ProductType
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
-import com.android.billingclient.api.BillingFlowParams.SubscriptionUpdateParams.ReplacementMode
+import com.android.billingclient.api.BillingFlowParams.ProductDetailsParams.SubscriptionProductReplacementParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.InAppMessageParams
@@ -29,6 +29,9 @@ import kotlin.coroutines.resume
 /** [BillingGateway] backed by the real Google Play Billing Library 8. */
 class PlayBillingGateway(context: Context) : BillingGateway {
 
+    /** Product of every purchase token seen, so a plan change can name the product it replaces. */
+    private val ownedProducts = OwnedProductIndex()
+
     private val updates = MutableSharedFlow<PurchaseUpdate>(extraBufferCapacity = 8, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     override val purchaseUpdates: Flow<PurchaseUpdate> = updates.asSharedFlow()
 
@@ -37,7 +40,9 @@ class PlayBillingGateway(context: Context) : BillingGateway {
 
     private val client: BillingClient = BillingClient.newBuilder(context.applicationContext)
         .setListener { result, purchases ->
-            updates.tryEmit(PurchaseUpdate(result.status(), purchases.orEmpty().map { it.toOwned() }))
+            val owned = purchases.orEmpty().map { it.toOwned() }
+            ownedProducts.record(owned)
+            updates.tryEmit(PurchaseUpdate(result.status(), owned))
         }
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .enableAutoServiceReconnection()
@@ -94,7 +99,9 @@ class PlayBillingGateway(context: Context) : BillingGateway {
     private suspend fun queryPurchases(params: QueryPurchasesParams): Pair<BillingStatus, List<OwnedPurchase>> =
         suspendCancellableCoroutine { cont ->
             client.queryPurchasesAsync(params) { result, purchases ->
-                if (cont.isActive) cont.resume(result.status() to purchases.map { it.toOwned() })
+                val owned = purchases.map { it.toOwned() }
+                ownedProducts.record(owned)
+                if (cont.isActive) cont.resume(result.status() to owned)
             }
         }
 
@@ -124,6 +131,15 @@ class PlayBillingGateway(context: Context) : BillingGateway {
         }
     }
 
+    /**
+     * Opens the purchase sheet. For a plan change ([oldPurchaseToken] set) it uses the per-product replacement params
+     * Google documents as preferred: the new product names the product it replaces and how ([replacement]), and
+     * `SubscriptionUpdateParams` only carries the old purchase token.
+     * See [Upgrade, downgrade, or change a subscription](https://developer.android.com/google/play/billing/subscriptions#use_subscriptionproductreplacementparams_for_replacement_preferred).
+     *
+     * Returns [BillingStatus.DEVELOPER_ERROR] without opening the sheet when [oldPurchaseToken] was never reported by
+     * this gateway (`queryPurchases()` or a purchase update), since the product it replaces is then unknown.
+     */
     override fun launchPurchase(
         activity: Activity,
         productId: String,
@@ -132,20 +148,25 @@ class PlayBillingGateway(context: Context) : BillingGateway {
         replacement: PlanChange?,
     ): BillingStatus {
         val productDetails = details[productId] ?: return BillingStatus.ITEM_UNAVAILABLE
-        val builder = BillingFlowParams.newBuilder().setProductDetailsParamsList(
-            listOf(
-                BillingFlowParams.ProductDetailsParams.newBuilder()
-                    .setProductDetails(productDetails)
-                    .apply { if (offerToken.isNotEmpty()) setOfferToken(offerToken) }
-                    .build()
-            )
-        )
+        val oldProductId = oldPurchaseToken?.let { ownedProducts.productOf(it) ?: return BillingStatus.DEVELOPER_ERROR }
+        val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(productDetails)
+            .apply { if (offerToken.isNotEmpty()) setOfferToken(offerToken) }
+            .apply {
+                if (oldProductId != null) {
+                    setSubscriptionProductReplacementParams(
+                        SubscriptionProductReplacementParams.newBuilder()
+                            .setOldProductId(oldProductId)
+                            .setReplacementMode(productReplacementModeOf(replacement ?: PlanChange.WITH_TIME_PRORATION))
+                            .build()
+                    )
+                }
+            }
+            .build()
+        val builder = BillingFlowParams.newBuilder().setProductDetailsParamsList(listOf(productParams))
         if (oldPurchaseToken != null) {
             builder.setSubscriptionUpdateParams(
-                BillingFlowParams.SubscriptionUpdateParams.newBuilder()
-                    .setOldPurchaseToken(oldPurchaseToken)
-                    .setSubscriptionReplacementMode((replacement ?: PlanChange.WITH_TIME_PRORATION).toReplacementMode())
-                    .build()
+                BillingFlowParams.SubscriptionUpdateParams.newBuilder().setOldPurchaseToken(oldPurchaseToken).build()
             )
         }
         return client.launchBillingFlow(activity, builder.build()).status()
@@ -168,13 +189,6 @@ class PlayBillingGateway(context: Context) : BillingGateway {
         else -> BillingStatus.ERROR
     }
 
-    private fun PlanChange.toReplacementMode(): Int = when (this) {
-        PlanChange.WITH_TIME_PRORATION -> ReplacementMode.WITH_TIME_PRORATION
-        PlanChange.CHARGE_PRORATED_PRICE -> ReplacementMode.CHARGE_PRORATED_PRICE
-        PlanChange.WITHOUT_PRORATION -> ReplacementMode.WITHOUT_PRORATION
-        PlanChange.CHARGE_FULL_PRICE -> ReplacementMode.CHARGE_FULL_PRICE
-        PlanChange.DEFERRED -> ReplacementMode.DEFERRED
-    }
 
     private fun ProductDetails.toProduct() = SubscriptionProduct(
         productId = productId,
