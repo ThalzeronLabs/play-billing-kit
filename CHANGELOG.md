@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- `OneTimeOffer.discountPercent` for showing rounded-down discount badges on one-time offers.
+
 ### Changed
 - Plan changes use `SubscriptionProductReplacementParams`, the per-product replacement params Google documents as
   preferred since Billing Library 8.1, instead of the deprecated `SubscriptionUpdateParams.setSubscriptionReplacementMode`
