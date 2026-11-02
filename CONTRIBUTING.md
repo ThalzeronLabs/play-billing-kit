@@ -12,7 +12,7 @@ Thanks for helping! This library exists to remove the billing bugs that cost app
 ```bash
 git clone https://github.com/ThalzeronLabs/play-billing-kit.git
 cd play-billing-kit
-./gradlew :billing:testDebugUnitTest :sample:testDebugUnitTest :sample:assembleDebug
+./gradlew :billing:testDebugUnitTest :billing-compose:testDebugUnitTest :sample:testDebugUnitTest :sample:assembleDebug
 ```
 
 ## Project layout
@@ -21,7 +21,9 @@ cd play-billing-kit
 |---|---|
 | `billing/src/main/kotlin` | The library. `BillingKit` holds the rules; `PlayBillingGateway` is the only file that touches the Play Billing Library. |
 | `billing/src/test/kotlin` | Unit tests against `FakeGateway` (`Fixtures.kt`). |
-| `sample/` | Compose paywall running on `FakeBillingGateway`. |
+| `billing-compose/` | Optional Compose paywall components; JVM tests with Robolectric. |
+| `sample/` | Compose paywall running on `FakeBillingGateway`, with previews. |
+| `docs/` | Guides, e.g. server-side verification. |
 
 ## Making a change
 
@@ -48,7 +50,8 @@ cd play-billing-kit
 1. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and bump `VERSION_NAME` in `gradle.properties`.
 2. Merge to `main`, then run the **Release** workflow (or push a `vX.Y.Z` tag). It runs the tests, builds the AAR
    and creates the GitHub release from the changelog section.
-3. JitPack builds the tag on first request: `com.github.ThalzeronLabs:play-billing-kit:vX.Y.Z`.
+3. JitPack builds the tag on first request: `com.github.ThalzeronLabs:play-billing-kit:vX.Y.Z` and
+   `com.github.ThalzeronLabs:play-billing-kit-compose:vX.Y.Z`.
 
 ## Code of conduct
 

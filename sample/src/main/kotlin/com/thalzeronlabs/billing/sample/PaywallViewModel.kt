@@ -7,6 +7,11 @@ import com.thalzeronlabs.billing.BillingGateway
 import com.thalzeronlabs.billing.BillingKit
 import com.thalzeronlabs.billing.BillingState
 import com.thalzeronlabs.billing.BillingStatus
+import com.thalzeronlabs.billing.SubscriptionInfo
+import com.thalzeronlabs.billing.SubscriptionStatus
+import com.thalzeronlabs.billing.SubscriptionStatusSource
+import com.thalzeronlabs.billing.compose.PaywallPlan
+import com.thalzeronlabs.billing.compose.paywallPlans
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,43 +19,63 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** One plan card on the paywall. */
-data class PlanUi(
-    val productId: String,
-    val title: String,
-    /** e.g. "$4.99 / month". */
-    val price: String,
-    /** Length of the free trial, e.g. "1 week"; only set when this user is eligible for it. */
-    val trial: String?,
-    val owned: Boolean,
-    val pending: Boolean,
-)
-
 /** Everything the paywall screen renders. */
 data class PaywallUiState(
     val loading: Boolean = true,
     val unavailable: Boolean = false,
-    val plans: List<PlanUi> = emptyList(),
+    /** The subscription plans. */
+    val plans: List<PaywallPlan> = emptyList(),
+    /** One-time products: the lifetime "remove ads" and the consumable coins. */
+    val extras: List<PaywallPlan> = emptyList(),
     val premium: Boolean = false,
+    val adsRemoved: Boolean = false,
+    val coins: Int = 0,
+    /** A subscription that needs the user's attention (grace period, on hold, paused, canceled…). */
+    val status: SubscriptionInfo? = null,
     val message: String? = null,
 )
 
-class PaywallViewModel(private val gateway: BillingGateway) : ViewModel() {
+class PaywallViewModel(
+    private val gateway: BillingGateway,
+    statusSource: SubscriptionStatusSource? = gateway as? SubscriptionStatusSource,
+) : ViewModel() {
 
-    private val billing = BillingKit(gateway, listOf(FakeBillingGateway.MONTHLY, FakeBillingGateway.YEARLY), viewModelScope)
+    private val billing = BillingKit(
+        gateway = gateway,
+        productIds = SUBSCRIPTIONS,
+        scope = viewModelScope,
+        lifetimeProductIds = listOf(FakeBillingGateway.REMOVE_ADS),
+        consumableProductIds = listOf(FakeBillingGateway.COINS),
+        statusSource = statusSource,
+    )
     private val message = MutableStateFlow<String?>(null)
 
-    val state: StateFlow<PaywallUiState> = combine(billing.state, message) { billingState, msg -> billingState.toUi(msg) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PaywallUiState())
+    /** In a real app the balance and the granted tokens live in your database (or better, on your server). */
+    private val coins = MutableStateFlow(0)
+    private val grantedTokens = mutableSetOf<String>()
+
+    val state: StateFlow<PaywallUiState> = combine(billing.state, message, coins) { billingState, msg, balance ->
+        billingState.toUi(msg, balance)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PaywallUiState())
 
     init {
         billing.start()
+        // Consumables: grant first, then consume, so a crash in between never loses what the user paid for.
+        viewModelScope.launch {
+            billing.state.collect { s ->
+                s.unconsumedPurchases.filter { grantedTokens.add(it.purchaseToken) }.forEach { purchase ->
+                    coins.value += FakeBillingGateway.COINS_PER_PACK * purchase.quantity
+                    billing.consume(purchase.purchaseToken)
+                }
+            }
+        }
     }
 
     fun buy(activity: Activity, productId: String) {
-        val isPlanChange = billing.state.value.hasAnySubscription
+        val isPlanChange = productId in SUBSCRIPTIONS && billing.state.value.hasAnySubscription
         val status = billing.buy(activity, productId)
         message.value = when {
+            status == BillingStatus.ITEM_ALREADY_OWNED -> "You already own this."
             status != BillingStatus.OK -> "Could not start the purchase: $status"
             isPlanChange -> "Plan change sent. Upgrades apply now; downgrades wait for the renewal date."
             else -> null
@@ -61,52 +86,43 @@ class PaywallViewModel(private val gateway: BillingGateway) : ViewModel() {
         viewModelScope.launch {
             message.value = "Restoring purchases…"
             billing.refresh()
-            message.value = if (billing.state.value.hasAnySubscription) "Purchases restored." else "Nothing to restore."
+            val s = billing.state.value
+            message.value = if (s.hasAnySubscription || s.activeProductIds.isNotEmpty()) "Purchases restored." else "Nothing to restore."
+        }
+    }
+
+    /** Demo only: pretends Play moved the subscription to [status] (null = back to normal). */
+    fun simulate(status: SubscriptionStatus?) {
+        val fake = gateway as? FakeBillingGateway ?: return
+        fake.simulate(status)
+        viewModelScope.launch {
+            billing.refresh()
+            message.value = null
         }
     }
 
     /** Demo only: wipes the fake store so you can buy again. */
     fun resetDemo() {
         (gateway as? FakeBillingGateway)?.clearPurchases() ?: return
+        coins.value = 0
         restore()
     }
 
     override fun onCleared() = billing.stop()
 
-    private fun BillingState.toUi(msg: String?) = PaywallUiState(
+    private fun BillingState.toUi(msg: String?, balance: Int) = PaywallUiState(
         loading = connection == BillingState.Connection.CONNECTING || (connection == BillingState.Connection.READY && products.isEmpty()),
         unavailable = connection == BillingState.Connection.UNAVAILABLE,
+        plans = billing.paywallPlans(SUBSCRIPTIONS, this),
+        extras = billing.paywallPlans(listOf(FakeBillingGateway.REMOVE_ADS, FakeBillingGateway.COINS), this),
         premium = hasAnySubscription,
+        adsRemoved = isActive(FakeBillingGateway.REMOVE_ADS),
+        coins = balance,
+        status = subscriptions.values.firstOrNull { it.status != SubscriptionStatus.ACTIVE && it.status != SubscriptionStatus.EXPIRED },
         message = msg ?: lastError?.let { "Billing error: $it" },
-        plans = listOf(FakeBillingGateway.MONTHLY, FakeBillingGateway.YEARLY).mapNotNull { id ->
-            val product = products[id] ?: return@mapNotNull null
-            val offer = billing.offerFor(id) ?: return@mapNotNull null
-            val recurring = offer.recurringPhase
-            PlanUi(
-                productId = id,
-                title = product.title,
-                price = "${recurring.formattedPrice} / ${periodLabel(recurring.billingPeriod, plural = false)}",
-                trial = offer.phases.firstOrNull { it.priceMicros == 0L }?.let { periodLabel(it.billingPeriod) },
-                owned = isActive(id),
-                pending = id in pendingProductIds,
-            )
-        },
     )
-}
 
-/** "P1M" -> "month", "P1W" -> "1 week", "P3M" -> "3 months". Covers the ISO-8601 periods Play uses. */
-internal fun periodLabel(iso: String, plural: Boolean = true): String {
-    val match = Regex("""P(\d+)([DWMY])""").matchEntire(iso) ?: return iso
-    val count = match.groupValues[1].toInt()
-    val unit = when (match.groupValues[2]) {
-        "D" -> "day"
-        "W" -> "week"
-        "M" -> "month"
-        else -> "year"
-    }
-    return when {
-        count == 1 && !plural -> unit
-        count == 1 -> "1 $unit"
-        else -> "$count ${unit}s"
+    private companion object {
+        val SUBSCRIPTIONS = listOf(FakeBillingGateway.MONTHLY, FakeBillingGateway.YEARLY)
     }
 }

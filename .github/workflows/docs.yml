@@ -32,12 +32,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Generate the Dokka site
-        run: ./gradlew :billing:dokkaGeneratePublicationHtml
+      - name: Generate the Dokka site (billing + billing-compose)
+        run: ./gradlew :dokkaGenerate
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: billing/build/dokka/html
+          path: build/dokka/html
 
   deploy:
     needs: build

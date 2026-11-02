@@ -8,7 +8,7 @@
 
 ## Checklist
 
-- [ ] `./gradlew :billing:testDebugUnitTest :sample:testDebugUnitTest :sample:assembleDebug` passes
+- [ ] `./gradlew :billing:testDebugUnitTest :billing-compose:testDebugUnitTest :sample:testDebugUnitTest :sample:assembleDebug` passes
 - [ ] New behavior is covered by a unit test against the fake gateway
 - [ ] Public API changes have KDoc
 - [ ] Play behavior changes link the official developer.android.com doc

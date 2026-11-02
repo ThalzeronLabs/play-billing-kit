@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
+### Added
+- One-time products in the same `BillingState`: lifetime (non-consumable) products are acknowledged and unlock
+  through `activeProductIds`; consumables wait in `unconsumedPurchases` until the app grants them and calls
+  `BillingKit.consume()`, then can be bought again. `buy()` sells the cheapest eligible one-time offer (Billing
+  Library 8 purchase options and offers) and answers `ITEM_ALREADY_OWNED` without opening the sheet when the product
+  is still owned. `consume()` refuses lifetime products and subscriptions.
+- Subscription statuses: `BillingState.subscriptions` with `SubscriptionStatus` `ACTIVE`, `CANCELED` (still valid),
+  `GRACE_PERIOD`, `ON_HOLD`, `PAUSED`, `SUSPENDED`, `EXPIRED` and `PENDING`; access follows `grantsAccess`.
+- `SubscriptionStatusSource` to plug in your backend (Google Play Developer API), and
+  `SubscriptionStatus.fromPlayApi()` to map `subscriptionState`.
+- Suspended subscriptions are queried (`includeSuspendedSubscriptions`, Billing Library 8.1+) and never unlock.
+- `BillingKit.showInAppMessages()`: Play's own message for payment problems; the state refreshes when the user fixes it.
+- `PlayLinks`: deep links to the Play subscriptions center and to one subscription.
+- New optional module `play-billing-kit-compose`: `PlanCard`, `FreeTrialBadge`, `RestorePurchasesButton`,
+  `PaywallLinks`, `SubscriptionStatusBanner`, `PaywallPlan`/`paywallPlans()` and translatable `PaywallStrings`;
+  Compose UI tests on Robolectric.
+- `docs/server-verification.md`: why and how to verify purchases with the Google Play Developer API, with a minimal
+  backend example.
+- Sample: lifetime and consumable products, status simulator, previews of every component.
+- One Dokka site for both modules.
+
+### Changed
+- `BillingState.hasAnySubscription` now means "a subscription grants access right now" (lifetime products do not count).
+- `BillingGateway` has new methods with default implementations (`queryOneTimeProducts`, `queryOneTimePurchases`,
+  `consume`, `showInAppMessages`), so existing fakes keep compiling.
+- `OwnedPurchase` has `quantity` and `suspended`; a suspended purchase does not grant access.
+
 ## [0.1.0] - 2026-11-01
 
 First public release.
@@ -28,5 +57,6 @@ First public release.
   soon as the new purchase arrives, and the state is re-synced with `queryPurchasesAsync`.
 - `kotlinx-coroutines-core` is now an `api` dependency, since `StateFlow`/`Flow` are part of the public API.
 
-[Unreleased]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ThalzeronLabs/play-billing-kit/releases/tag/v0.1.0
