@@ -87,8 +87,20 @@ internal class FakeGateway(
 
     override suspend fun queryPurchases() = BillingStatus.OK to purchases
 
+    /** Results the next acknowledge() calls return, in order; OK once empty. */
+    val acknowledgeResults = ArrayDeque<BillingStatus>()
+
+    /** Every acknowledge() attempt, successful or not. */
+    val acknowledgeAttempts = mutableListOf<String>()
+
     override suspend fun acknowledge(purchaseToken: String): BillingStatus {
+        acknowledgeAttempts += purchaseToken
+        val status = acknowledgeResults.removeFirstOrNull() ?: BillingStatus.OK
+        if (status != BillingStatus.OK) return status
         acknowledged += purchaseToken
+        // Like Play: from now on the purchase is reported as acknowledged.
+        purchases = purchases.map { if (it.purchaseToken == purchaseToken) it.copy(acknowledged = true) else it }
+        oneTimePurchases = oneTimePurchases.map { if (it.purchaseToken == purchaseToken) it.copy(acknowledged = true) else it }
         return BillingStatus.OK
     }
 
