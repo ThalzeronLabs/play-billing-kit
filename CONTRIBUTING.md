@@ -50,8 +50,8 @@ cd play-billing-kit
 1. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and bump `VERSION_NAME` in `gradle.properties`.
 2. Merge to `main`, then run the **Release** workflow (or push a `vX.Y.Z` tag). It runs the tests, builds the AAR
    and creates the GitHub release from the changelog section.
-3. JitPack builds the tag on first request: `com.github.ThalzeronLabs:play-billing-kit:vX.Y.Z` and
-   `com.github.ThalzeronLabs:play-billing-kit-compose:vX.Y.Z`.
+3. JitPack builds the tag on first request: `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:vX.Y.Z` and
+   `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:vX.Y.Z`.
 
 ## Code of conduct
 

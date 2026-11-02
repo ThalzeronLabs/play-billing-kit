@@ -27,11 +27,13 @@ dependencyResolutionManagement {
 **2. Add the dependency** in your app's `build.gradle.kts`:
 
 ```kotlin
-implementation("com.github.ThalzeronLabs:play-billing-kit:v0.2.0")
-implementation("com.github.ThalzeronLabs:play-billing-kit-compose:v0.2.0")   // optional: ready-made paywall components
+implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:v0.2.0")
+implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:v0.2.0")   // optional: ready-made paywall components
 ```
 
 It brings Google Play Billing Library 8.3.0 and the `BILLING` permission with it.
+Since v0.2.0 the repository publishes two modules, so JitPack serves them under the group
+`com.github.ThalzeronLabs.play-billing-kit` (v0.1.0 was `com.github.ThalzeronLabs:play-billing-kit:v0.1.0`).
 
 **3. Sell:**
 

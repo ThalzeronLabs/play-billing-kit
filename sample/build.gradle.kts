@@ -31,8 +31,8 @@ android {
 
 dependencies {
     // In your app these are:
-    //   implementation("com.github.ThalzeronLabs:play-billing-kit:v0.2.0")
-    //   implementation("com.github.ThalzeronLabs:play-billing-kit-compose:v0.2.0") // optional
+    //   implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:v0.2.0")
+    //   implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:v0.2.0") // optional
     implementation(project(":billing"))
     implementation(project(":billing-compose"))
 

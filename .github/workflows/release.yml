@@ -66,8 +66,8 @@ jobs:
             echo "### Install"
             echo
             echo '```kotlin'
-            echo "implementation(\"com.github.ThalzeronLabs:play-billing-kit:${TAG}\")"
-            echo "implementation(\"com.github.ThalzeronLabs:play-billing-kit-compose:${TAG}\") // optional Compose paywall components"
+            echo "implementation(\"com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:${TAG}\")"
+            echo "implementation(\"com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:${TAG}\") // optional Compose paywall components"
             echo '```'
             echo
             echo 'With `maven("https://jitpack.io")` in your repositories. See the README for the full quick start.'

@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- Install coordinates in the README, CONTRIBUTING, the sample and the release notes template: with two modules JitPack
+  publishes `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit` and
+  `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose` (checked against the JitPack build of v0.2.0).
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
