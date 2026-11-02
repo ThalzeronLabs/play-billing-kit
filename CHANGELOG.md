@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+- `billing-compose` UI tests use the v2 `createComposeRule` (`androidx.compose.ui.test.junit4.v2`), which replaces the
+  deprecated one.
+
 ### Fixed
 - Install coordinates in the README, CONTRIBUTING, the sample and the release notes template: with two modules JitPack
   publishes `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit` and
