@@ -11,8 +11,8 @@ android {
         applicationId = "com.thalzeronlabs.billing.sample"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildFeatures {
@@ -30,8 +30,11 @@ android {
 }
 
 dependencies {
-    // In your app this is: implementation("com.github.ThalzeronLabs:play-billing-kit:v0.1.0")
+    // In your app these are:
+    //   implementation("com.github.ThalzeronLabs:play-billing-kit:v0.2.0")
+    //   implementation("com.github.ThalzeronLabs:play-billing-kit-compose:v0.2.0") // optional
     implementation(project(":billing"))
+    implementation(project(":billing-compose"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

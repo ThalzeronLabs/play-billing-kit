@@ -17,6 +17,7 @@ dependencyResolutionManagement {
 rootProject.name = "play-billing-kit"
 
 include(":billing")
+include(":billing-compose")
 
 // JitPack only needs the library; skipping the sample app keeps its builds small and fast.
 if (System.getenv("JITPACK") != "true") {

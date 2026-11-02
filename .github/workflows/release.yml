@@ -1,6 +1,6 @@
 name: Release
 
-# Creates a GitHub release (and its tag) from the matching CHANGELOG.md section, with the AAR attached.
+# Creates a GitHub release (and its tag) from the matching CHANGELOG.md section, with both AARs attached.
 # Run it from the Actions tab with the tag to create, or push a vX.Y.Z tag.
 
 on:
@@ -40,12 +40,13 @@ jobs:
           fi
 
       - name: Unit tests
-        run: ./gradlew :billing:testDebugUnitTest
+        run: ./gradlew :billing:testDebugUnitTest :billing-compose:testDebugUnitTest
 
-      - name: Build the AAR
+      - name: Build the AARs
         run: |
-          ./gradlew :billing:assembleRelease
+          ./gradlew :billing:assembleRelease :billing-compose:assembleRelease
           cp billing/build/outputs/aar/billing-release.aar "play-billing-kit-${TAG}.aar"
+          cp billing-compose/build/outputs/aar/billing-compose-release.aar "play-billing-kit-compose-${TAG}.aar"
 
       - name: Release notes from CHANGELOG.md
         run: |
@@ -66,6 +67,7 @@ jobs:
             echo
             echo '```kotlin'
             echo "implementation(\"com.github.ThalzeronLabs:play-billing-kit:${TAG}\")"
+            echo "implementation(\"com.github.ThalzeronLabs:play-billing-kit-compose:${TAG}\") // optional Compose paywall components"
             echo '```'
             echo
             echo 'With `maven("https://jitpack.io")` in your repositories. See the README for the full quick start.'
@@ -76,7 +78,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$TAG" "play-billing-kit-${TAG}.aar" \
+          gh release create "$TAG" "play-billing-kit-${TAG}.aar" "play-billing-kit-compose-${TAG}.aar" \
             --title "$TAG" \
             --notes-file notes.md \
             --target "$GITHUB_SHA"

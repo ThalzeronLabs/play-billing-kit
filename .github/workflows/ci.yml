@@ -19,14 +19,14 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: ./gradlew :billing:testDebugUnitTest :sample:testDebugUnitTest
+      - name: Unit tests (billing-compose runs its Compose UI tests on Robolectric)
+        run: ./gradlew :billing:testDebugUnitTest :billing-compose:testDebugUnitTest :sample:testDebugUnitTest
 
-      - name: Build the AAR and the Maven publication
-        run: ./gradlew :billing:assembleRelease :billing:publishToMavenLocal
+      - name: Build the AARs and the Maven publications
+        run: ./gradlew :billing:assembleRelease :billing-compose:assembleRelease :billing:publishToMavenLocal :billing-compose:publishToMavenLocal
 
       - name: Build the sample app
         run: ./gradlew :sample:assembleDebug
 
       - name: Build the API docs
-        run: ./gradlew :billing:dokkaGeneratePublicationHtml
+        run: ./gradlew :dokkaGenerate

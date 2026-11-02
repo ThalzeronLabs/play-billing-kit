@@ -1,6 +1,7 @@
 # JitPack build: https://jitpack.io/#ThalzeronLabs/play-billing-kit
 # AGP 9 needs JDK 17+. JITPACK=true (set by JitPack) leaves the sample app out of the build (settings.gradle.kts).
+# Both artifacts land in ~/.m2 as com.github.ThalzeronLabs:play-billing-kit and :play-billing-kit-compose.
 jdk:
   - openjdk17
 install:
-  - ./gradlew :billing:publishReleasePublicationToMavenLocal --no-daemon --stacktrace
+  - ./gradlew :billing:publishReleasePublicationToMavenLocal :billing-compose:publishReleasePublicationToMavenLocal --no-daemon --stacktrace
