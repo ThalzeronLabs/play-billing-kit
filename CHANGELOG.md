@@ -6,14 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-### Changed
-- `billing-compose` UI tests use the v2 `createComposeRule` (`androidx.compose.ui.test.junit4.v2`), which replaces the
-  deprecated one.
+## [0.2.1] - 2026-11-02
 
 ### Fixed
+- A failed acknowledgement was recorded as done in memory and only tried again on the next `refresh()`; if the app
+  did not refresh within 3 days, Play refunded the purchase. Now only purchases Play confirms are marked
+  acknowledged, transient failures are retried with the same backoff as the connection, and every `refresh()` retries
+  what is still pending.
 - Install coordinates in the README, CONTRIBUTING, the sample and the release notes template: with two modules JitPack
   publishes `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit` and
   `com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose` (checked against the JitPack build of v0.2.0).
+
+### Changed
+- `billing-compose` UI tests use the v2 `createComposeRule` (`androidx.compose.ui.test.junit4.v2`), which replaces the
+  deprecated one.
 
 ## [0.2.0] - 2026-11-02
 
@@ -66,6 +72,7 @@ First public release.
   soon as the new purchase arrives, and the state is re-synced with `queryPurchasesAsync`.
 - `kotlinx-coroutines-core` is now an `api` dependency, since `StateFlow`/`Flow` are part of the public API.
 
-[Unreleased]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ThalzeronLabs/play-billing-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ThalzeronLabs/play-billing-kit/releases/tag/v0.1.0

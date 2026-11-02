@@ -53,8 +53,9 @@ data class BillingState(
 /**
  * Subscriptions on Google Play without the usual bugs:
  * - **reconnects** with backoff when the Play service drops;
- * - **acknowledges every paid purchase** wherever it shows up (purchase sheet *and* restore), so Play never refunds
- *   a subscription after 3 days because the acknowledgement only lived in one code path;
+ * - **acknowledges every paid purchase** wherever it shows up (purchase sheet *and* restore), and retries a failed
+ *   acknowledgement with backoff, so Play does not refund a purchase after 3 days because the acknowledgement only
+ *   lived in one code path or hit a transient error;
  * - **picks the right offer** (free trial when the user is eligible) instead of `offerDetails.first()`;
  * - **changes plans** by replacing the current subscription instead of stacking a second one;
  * - sells **one-time products**: lifetime ones (acknowledged, unlocked forever) and consumables (granted by you, then
@@ -111,6 +112,7 @@ class BillingKit(
     fun stop() {
         jobs.forEach { it.cancel() }
         jobs = emptyList()
+        acknowledgementRetry?.cancel()
         gateway.disconnect()
         _state.update { it.copy(connection = BillingState.Connection.DISCONNECTED) }
     }
@@ -241,6 +243,9 @@ class BillingKit(
         return status
     }
 
+    @Volatile
+    private var acknowledgementRetry: Job? = null
+
     /** Token of the subscription a plan change in flight is replacing; it is retired when the new purchase lands. */
     @Volatile
     private var replacedToken: String? = null
@@ -308,19 +313,59 @@ class BillingKit(
     }
 
     private suspend fun applyPurchases(purchases: List<OwnedPurchase>, replaceAll: Boolean) {
-        // Consumables are acknowledged by consume(), after the app has granted them.
-        val toAcknowledge = purchases.filter { it.needsAcknowledgement && !isConsumable(it) }
-        toAcknowledge.forEach { purchase ->
-            val status = gateway.acknowledge(purchase.purchaseToken)
-            if (status != BillingStatus.OK) reportError(status)
-        }
+        val result = acknowledge(purchases)
         val merged = if (replaceAll) {
             purchases
         } else {
             currentPurchases.filter { old -> purchases.none { it.purchaseToken == old.purchaseToken } } + purchases
         }
-        currentPurchases = merged.map { if (it in toAcknowledge) it.copy(acknowledged = true) else it }
+        // Only what Play confirmed is marked acknowledged: a failed one stays pending and is tried again.
+        currentPurchases = merged.map { if (it.purchaseToken in result.acknowledged) it.copy(acknowledged = true) else it }
         publish()
+        if (result.retryable) scheduleAcknowledgementRetry()
+    }
+
+    private class AcknowledgeResult(val acknowledged: Set<String>, val retryable: Boolean)
+
+    /** Acknowledges every paid, unacknowledged purchase that is not a consumable (consume() acknowledges those). */
+    private suspend fun acknowledge(purchases: List<OwnedPurchase>): AcknowledgeResult {
+        val acknowledged = mutableSetOf<String>()
+        var retryable = false
+        purchases.filter { it.needsAcknowledgement && !isConsumable(it) }.forEach { purchase ->
+            val status = gateway.acknowledge(purchase.purchaseToken)
+            when {
+                status == BillingStatus.OK -> acknowledged += purchase.purchaseToken
+                else -> {
+                    reportError(status)
+                    if (status.isTransient) retryable = true
+                }
+            }
+        }
+        return AcknowledgeResult(acknowledged, retryable)
+    }
+
+    /**
+     * Retries failed acknowledgements with the same backoff as the connection ([retryDelaysMillis]), so a purchase is
+     * not left to the next [refresh] (Play refunds it after 3 days). Every [refresh] also retries what is still pending.
+     */
+    private fun scheduleAcknowledgementRetry() {
+        if (acknowledgementRetry?.isActive == true) return
+        acknowledgementRetry = scope.launch {
+            for (wait in retryDelaysMillis) {
+                delay(wait)
+                val pending = currentPurchases.filter { it.needsAcknowledgement && !isConsumable(it) }
+                if (pending.isEmpty()) return@launch
+                val result = acknowledge(pending)
+                currentPurchases = currentPurchases.map {
+                    if (it.purchaseToken in result.acknowledged) it.copy(acknowledged = true) else it
+                }
+                if (currentPurchases.none { it.needsAcknowledgement && !isConsumable(it) }) {
+                    _state.update { it.copy(lastError = null) }
+                    return@launch
+                }
+                if (!result.retryable) return@launch
+            }
+        }
     }
 
     /** Asks [statusSource] for the backend's view; on failure keeps the last answer. */

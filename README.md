@@ -27,8 +27,8 @@ dependencyResolutionManagement {
 **2. Add the dependency** in your app's `build.gradle.kts`:
 
 ```kotlin
-implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:v0.2.0")
-implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:v0.2.0")   // optional: ready-made paywall components
+implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit:v0.2.1")
+implementation("com.github.ThalzeronLabs.play-billing-kit:play-billing-kit-compose:v0.2.1")   // optional: ready-made paywall components
 ```
 
 It brings Google Play Billing Library 8.3.0 and the `BILLING` permission with it.
@@ -88,7 +88,7 @@ created in the Console.
 
 | Bug in the wild | What the kit does | Official docs |
 |---|---|---|
-| **Refunded after 3 days** — the purchase was acknowledged only in `onPurchasesUpdated`, so a purchase restored on another device or after a crash was never acknowledged and Play refunded it. | Every paid purchase is acknowledged **wherever it shows up**: the purchase sheet *and* every restore. | [Notify Google the purchase was processed](https://developer.android.com/google/play/billing/integrate#notifying-google) |
+| **Refunded after 3 days** — the purchase was acknowledged only in `onPurchasesUpdated`, so a purchase restored on another device or after a crash was never acknowledged and Play refunded it. | Every paid purchase is acknowledged **wherever it shows up**: the purchase sheet *and* every restore; a failed acknowledgement is retried with backoff. | [Notify Google the purchase was processed](https://developer.android.com/google/play/billing/integrate#notifying-google) |
 | **Wrong offer sold** — `subscriptionOfferDetails.first()` has no guaranteed order: users eligible for a free trial were charged, or a test offer was sold to everyone. | `OfferSelector.bestForUser()` picks the free trial, then the cheapest intro price, then the base plan; offers tagged `manual-only` are never auto-sold. | [Show products available to buy](https://developer.android.com/google/play/billing/integrate#show-products) |
 | **Two subscriptions at once** — buying a second plan stacked a new subscription instead of replacing the old one. | `buy()` turns into a plan change: upgrades switch now with time proration, downgrades wait for the renewal date, and the replaced purchase stops granting access. | [Upgrade, downgrade, or change a subscription](https://developer.android.com/google/play/billing/subscriptions#allow-users-change) |
 | **Dead after a service hiccup** — one failed `startConnection` and billing stayed off until the app restarted. | Automatic reconnection plus exponential backoff for transient errors; `BILLING_UNAVAILABLE` (no Play account) is reported once, without retry loops. | [Automatically re-establish a connection](https://developer.android.com/google/play/billing/integrate#automatic-service-reconnection) |
