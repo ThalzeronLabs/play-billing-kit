@@ -7,7 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Added
-- `OneTimeOffer.discountPercent` for showing rounded-down discount badges on one-time offers.
+- `OneTimeOffer.discountPercent` for showing rounded-down discount badges on one-time offers. Thanks to
+  [@jay23606](https://github.com/jay23606) (#14).
 
 ### Changed
 - Plan changes use `SubscriptionProductReplacementParams`, the per-product replacement params Google documents as
