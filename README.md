@@ -200,6 +200,10 @@ consumption, subscription states) against a fake on the plain JVM — no emulato
 
 CI runs them on every push and pull request, then builds both AARs, the sample app and the API docs.
 
+## How I build this
+
+I use AI assistance (Claude) while I build this project: for drafting, exploring options and writing tests. I review every change myself, each one lands through a pull request with tests, and CI must pass before anything is merged. I'm responsible for every line.
+
 ## Contributing
 
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
