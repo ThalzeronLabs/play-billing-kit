@@ -84,7 +84,13 @@ data class OneTimeOffer(
         get() {
             val fullPrice = fullPriceMicros ?: return null
             if (fullPrice <= 0L || fullPrice <= priceMicros) return null
-            return (((fullPrice - priceMicros) * 100L) / fullPrice).toInt()
+            val diff = fullPrice - priceMicros
+            // diff * 100 overflows Long for very large prices, so fall back to BigInteger there.
+            return if (diff <= Long.MAX_VALUE / 100) {
+                (diff * 100 / fullPrice).toInt()
+            } else {
+                (diff.toBigInteger() * 100.toBigInteger() / fullPrice.toBigInteger()).toInt()
+            }
         }
 }
 
