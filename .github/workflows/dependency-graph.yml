@@ -28,7 +28,10 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Only what ships in the release libraries and the sample app: the release runtime classpath of every module.
+      # Only what ships (two library AARs): the release runtime classpath of every module except :sample, the
+      # sample app, which is only built in CI and never published. Modules are excluded by name, so a new
+      # published module is covered without anyone having to remember it.
       - uses: gradle/actions/dependency-submission@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           dependency-graph-include-configurations: '.*[Rr]eleaseRuntimeClasspath'
+          dependency-graph-exclude-projects: ':sample'
