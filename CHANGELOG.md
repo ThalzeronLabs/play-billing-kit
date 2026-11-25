@@ -18,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   and `DEFERRED`, so every `PlanChange` is covered by a test. `PlayBillingGateway.launchPurchase` now returns
   `DEVELOPER_ERROR` for an old purchase token it never reported, since the replaced product is then unknown.
 
+### Documentation
+
+- Add the Awesome Kotlin listing to the README.
+
 ## [0.2.1] - 2026-11-02
 
 ### Fixed
